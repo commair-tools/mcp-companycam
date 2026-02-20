@@ -1,0 +1,26 @@
+[project]
+name = "mcp-companycam"
+version = "0.1.0"
+description = "MCP server connecting Claude Desktop to CompanyCam's photo management API"
+requires-python = ">=3.10"
+dependencies = [
+    "mcp[cli]",
+    "httpx",
+    "pydantic",
+]
+
+[project.optional-dependencies]
+dev = [
+    "python-dotenv",
+]
+
+[project.scripts]
+mcp-companycam = "companycam_mcp_server:mcp.run"
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]
+only-include = ["companycam_mcp_server.py"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
