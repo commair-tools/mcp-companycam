@@ -1,8 +1,8 @@
 {
   "mcpServers": {
     "companycam": {
-      "command": "python",
-      "args": ["C:\\Users\\MaxFein_2r3ya5o\\GitHub\\mcp-companycam\\companycam_mcp_server.py"],
+      "command": "C:\\Program Files\\nodejs\\node.exe",
+      "args": ["C:\\Users\\MaxFein_2r3ya5o\\GitHub\\mcp-companycam\\build\\index.js"],
       "env": {
         "COMPANYCAM_API_TOKEN": "your_api_token_here"
       }

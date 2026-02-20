@@ -4,27 +4,31 @@
 MCP server connecting Claude Desktop to CompanyCam's photo management API for Commercial Air, Inc. Enables AI-assisted project photo lookup, documentation workflows, and cross-referencing with Service Fusion jobs via address matching.
 
 ## Tech Stack
-- **Runtime**: Python 3.10+
-- **Protocol**: MCP (Model Context Protocol) via FastMCP
+- **Runtime**: Node.js 18+, TypeScript
+- **Protocol**: MCP (Model Context Protocol) via @modelcontextprotocol/sdk
 - **Auth**: Bearer token (generated at app.companycam.com/access_tokens)
-- **HTTP Client**: httpx (async)
-- **Validation**: Pydantic v2
+- **HTTP Client**: Native fetch with retry logic
+- **Validation**: Zod schemas
 
 ## Architecture
-Single-file server (`companycam_mcp_server.py`) — idiomatic for Python MCP servers of this size (~860 lines). Structure within the file:
+Multi-file TypeScript project matching mcp-servicefusion structure:
 
-1. **Configuration** (lines 22-29) — BASE_URL, API_TOKEN from env, FastMCP instance
-2. **HTTP Client** (lines 33-105) — `_api_get`, `_api_post`, `_api_put`, `_handle_api_error`
-3. **Formatting Helpers** (lines 108-203) — timestamp conversion, address/project/photo formatting
-4. **Input Models** (lines 206-342) — Pydantic BaseModel classes with validation
-5. **Read Tools** (lines 345-688) — 8 tools for project/photo/user/tag lookups
-6. **Write Tools** (lines 691-852) — 5 tools for comments, tags, labels, notepad
-7. **Entry Point** (lines 855-858) — `mcp.run()`
+```
+src/
+├── index.ts            # MCP server singleton, side-effect tool imports, stdio transport
+├── client.ts           # CompanyCamClient class — Bearer auth, retries, error handling
+├── tools/
+│   ├── projects.ts     # 7 tools: search, get, labels, comments, notepad, add-comment, add-labels
+│   ├── photos.ts       # 4 tools: list-project-photos, get-photo, add-tags, add-comment
+│   └── reference.ts    # 2 tools: list-users, list-tags
+└── utils/
+    └── format.ts       # Formatting helpers (timestamps, addresses, projects, photos)
+```
 
 ## CompanyCam API
 - **Base URL**: `https://api.companycam.com/v2`
 - **Auth**: `Authorization: Bearer {COMPANYCAM_API_TOKEN}`
-- **Rate Limits**: Standard rate limiting with 429 responses
+- **Rate Limits**: Standard rate limiting with 429 responses; client retries with exponential backoff
 - **Timestamps**: Unix seconds (not ISO 8601)
 - **Pagination**: `page` and `per_page` query parameters (default 25, max 100)
 
@@ -62,12 +66,12 @@ Single-file server (`companycam_mcp_server.py`) — idiomatic for Python MCP ser
 
 ## Running
 ```bash
-# Direct
-python companycam_mcp_server.py
+# Build
+npm run build
 
-# Via entry point (after pip install -e .)
-mcp-companycam
+# Start
+node build/index.js
 
-# Via MCP CLI (inspector)
-mcp dev companycam_mcp_server.py
+# Dev (watch mode)
+npm run dev
 ```
