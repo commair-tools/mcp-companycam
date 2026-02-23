@@ -4,7 +4,7 @@ buildCommand = "npm install && npm run build"
 
 [deploy]
 startCommand = "node build/index.js"
-healthcheckPath = "/mcp"
+healthcheckPath = "/health"
 restartPolicyType = "on_failure"
 
 [deploy.env]

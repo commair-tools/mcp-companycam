@@ -47,6 +47,10 @@ if (TRANSPORT === "http") {
     );
   });
 
+  app.get("/health", (_req, res) => {
+    res.json({ status: "ok" });
+  });
+
   const PORT = parseInt(process.env.PORT || "3000", 10);
   app.listen(PORT, () =>
     console.log(`MCP HTTP server listening on port ${PORT}`),
