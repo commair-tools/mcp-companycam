@@ -1,0 +1,11 @@
+[build]
+builder = "nixpacks"
+buildCommand = "npm install && npm run build"
+
+[deploy]
+startCommand = "node build/index.js"
+healthcheckPath = "/mcp"
+restartPolicyType = "on_failure"
+
+[deploy.env]
+TRANSPORT = "http"
