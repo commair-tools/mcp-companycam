@@ -182,6 +182,15 @@ export function registerPhotoTools(server: McpServer): void {
           }
         }
 
+        // Tags
+        const tags = photo.tags as Array<Record<string, unknown>> | undefined;
+        if (tags && tags.length > 0) {
+          const tagStrs = tags.map(
+            (t) => `${t.display_value ?? "?"} (ID: ${t.id ?? "?"})`,
+          );
+          lines.push(`  Tags: ${tagStrs.join(", ")}`);
+        }
+
         lines.push(`  Processing: ${photo.processing_status ?? "?"}`);
         lines.push(`  Project ID: ${photo.project_id ?? "?"}`);
 
@@ -305,6 +314,113 @@ export function registerPhotoTools(server: McpServer): void {
         }
         return errorResult(
           `Error adding comment: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    },
+  );
+
+  // ────────────────────────────────────────────
+  // cc_get_photo_tags
+  // ────────────────────────────────────────────
+
+  server.registerTool(
+    "cc_get_photo_tags",
+    {
+      title: "Get Photo Tags",
+      description:
+        "List all tags currently applied to a specific photo. Use this to verify tagging results or check for duplicates before applying new tags.",
+      inputSchema: {
+        photo_id: z
+          .string()
+          .min(1)
+          .describe("CompanyCam photo ID"),
+      },
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true,
+      },
+    },
+    async (args) => {
+      try {
+        const client = getClient();
+        const data = await client.get<Record<string, unknown>[]>(
+          `photos/${args.photo_id}/tags`,
+        );
+
+        if (!data || data.length === 0) {
+          return textResult(`No tags on photo ${args.photo_id}.`);
+        }
+
+        const lines = [`**${data.length} tag(s)** on photo ${args.photo_id}:`];
+        for (const tag of data) {
+          lines.push(
+            `  • ${tag.display_value ?? "?"} (ID: ${tag.id ?? "?"})`,
+          );
+        }
+
+        return textResult(lines.join("\n"));
+      } catch (error) {
+        if (error instanceof CompanyCamApiError && error.statusCode === 404) {
+          return errorResult("Error: Resource not found. Check the photo ID is correct.");
+        }
+        return errorResult(
+          `Error fetching photo tags: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    },
+  );
+
+  // ────────────────────────────────────────────
+  // cc_remove_photo_tags
+  // ────────────────────────────────────────────
+
+  server.registerTool(
+    "cc_remove_photo_tags",
+    {
+      title: "Remove Tag from Photo",
+      description:
+        "Remove a specific tag from a photo. Get the tag_id from cc_list_tags or cc_get_photo_tags.",
+      inputSchema: {
+        photo_id: z
+          .string()
+          .min(1)
+          .describe("CompanyCam photo ID"),
+        tag_id: z
+          .string()
+          .min(1)
+          .describe("Tag ID to remove (get from cc_list_tags or cc_get_photo_tags)"),
+      },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: true,
+        openWorldHint: true,
+      },
+    },
+    async (args) => {
+      try {
+        const client = getClient();
+        await client.delete(
+          `photos/${args.photo_id}/tags/${args.tag_id}`,
+        );
+        return textResult(
+          `Tag ${args.tag_id} removed from photo ${args.photo_id}.`,
+        );
+      } catch (error) {
+        if (error instanceof CompanyCamApiError) {
+          if (error.statusCode === 404) {
+            return errorResult(
+              "Error: Resource not found. Check the photo ID and tag ID are correct.",
+            );
+          }
+          return errorResult(
+            `Failed to remove tag (HTTP ${error.statusCode}):\n${error.responseBody}`,
+          );
+        }
+        return errorResult(
+          `Error removing tag: ${error instanceof Error ? error.message : String(error)}`,
         );
       }
     },

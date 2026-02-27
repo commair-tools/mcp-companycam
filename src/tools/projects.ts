@@ -27,6 +27,12 @@ export function registerProjectTools(server: McpServer): void {
           .describe(
             "Search by project name or address (e.g., '123 Main St' or 'Smith Residence')",
           ),
+        modified_after: z
+          .string()
+          .optional()
+          .describe(
+            "Only return projects modified after this date (ISO8601, e.g., '2025-01-15'). Converted to Unix timestamp.",
+          ),
         page: z
           .number()
           .int()
@@ -54,11 +60,18 @@ export function registerProjectTools(server: McpServer): void {
         const page = args.page ?? 1;
         const perPage = args.per_page ?? 25;
 
-        const data = await client.get<Record<string, unknown>[]>("projects", {
+        const params: Record<string, string> = {
           query: args.query,
           page: String(page),
           per_page: String(perPage),
-        });
+        };
+        if (args.modified_after) {
+          params.modified_after = String(
+            Math.floor(new Date(args.modified_after).getTime() / 1000),
+          );
+        }
+
+        const data = await client.get<Record<string, unknown>[]>("projects", params);
 
         if (!data || data.length === 0) {
           return textResult(`No projects found matching '${args.query}'.`);
@@ -82,6 +95,96 @@ export function registerProjectTools(server: McpServer): void {
       } catch (error) {
         return errorResult(
           `Error searching projects: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    },
+  );
+
+  // ────────────────────────────────────────────
+  // cc_list_all_projects
+  // ────────────────────────────────────────────
+
+  server.registerTool(
+    "cc_list_all_projects",
+    {
+      title: "List All CompanyCam Projects",
+      description:
+        "List all CompanyCam projects (no search query required). Supports pagination, date filtering, and status filtering. Use this to iterate all projects, sum photo counts, or find recently modified projects.",
+      inputSchema: {
+        page: z
+          .number()
+          .int()
+          .min(1)
+          .optional()
+          .describe("Page number (default: 1)."),
+        per_page: z
+          .number()
+          .int()
+          .min(1)
+          .max(50)
+          .optional()
+          .describe("Results per page (default: 50, max: 50)."),
+        modified_after: z
+          .string()
+          .optional()
+          .describe(
+            "Only return projects modified after this date (ISO8601, e.g., '2025-01-15'). Converted to Unix timestamp.",
+          ),
+        status: z
+          .enum(["active", "archived"])
+          .optional()
+          .describe("Filter by project status: 'active' or 'archived'."),
+      },
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true,
+      },
+    },
+    async (args) => {
+      try {
+        const client = getClient();
+        const page = args.page ?? 1;
+        const perPage = args.per_page ?? 50;
+
+        const params: Record<string, string> = {
+          page: String(page),
+          per_page: String(perPage),
+        };
+        if (args.modified_after) {
+          params.modified_after = String(
+            Math.floor(new Date(args.modified_after).getTime() / 1000),
+          );
+        }
+        if (args.status) {
+          params.status = args.status;
+        }
+
+        const data = await client.get<Record<string, unknown>[]>("projects", params);
+
+        if (!data || data.length === 0) {
+          return textResult("No projects found with the given filters.");
+        }
+
+        const lines = [
+          `**${data.length} project(s)** (page ${page}):\n`,
+        ];
+        for (const project of data) {
+          lines.push(formatProjectSummary(project));
+          lines.push("");
+        }
+
+        if (data.length === perPage) {
+          lines.push(
+            `_More results may be available on page ${page + 1}._`,
+          );
+        }
+
+        return textResult(lines.join("\n"));
+      } catch (error) {
+        return errorResult(
+          `Error listing projects: ${error instanceof Error ? error.message : String(error)}`,
         );
       }
     },

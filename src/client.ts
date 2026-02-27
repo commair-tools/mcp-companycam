@@ -62,8 +62,12 @@ export class CompanyCamClient {
     return this.request<T>("PUT", path, { body });
   }
 
+  async delete(path: string): Promise<void> {
+    return this.request<void>("DELETE", path);
+  }
+
   private async request<T>(
-    method: "GET" | "POST" | "PUT",
+    method: "GET" | "POST" | "PUT" | "DELETE",
     path: string,
     options?: { params?: Record<string, string>; body?: unknown },
   ): Promise<T> {
@@ -101,6 +105,9 @@ export class CompanyCamClient {
       }
 
       if (response.ok) {
+        if (response.status === 204 || method === "DELETE") {
+          return undefined as T;
+        }
         return (await response.json()) as T;
       }
 

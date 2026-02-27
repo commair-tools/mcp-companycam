@@ -56,10 +56,13 @@ export function formatProjectSummary(project: Record<string, unknown>): string {
   const url = project.project_url as string | undefined;
   const notepad = project.notepad as string | undefined;
 
+  const photoCount = project.photo_count as number | null | undefined;
+
   const lines = [
     `**${name}** (ID: ${pid})${archived}`,
     `  Status: ${status}`,
     `  Address: ${addr}`,
+    ...(photoCount != null ? [`  Photo count: ${photoCount}`] : []),
     `  Created: ${created} | Updated: ${updated}`,
   ];
   if (url) lines.push(`  URL: ${url}`);
@@ -100,11 +103,19 @@ export function formatPhotoSummary(photo: Record<string, unknown>): string {
   const internal = photo.internal ? " [INTERNAL]" : "";
   const photoLink = photo.photo_url as string | undefined;
 
+  const tags = photo.tags as Array<Record<string, unknown>> | undefined;
+
   const lines = [
     `Photo ${pid}${internal} — by ${creator} on ${captured}`,
   ];
   if (desc) lines.push(`  Description: ${desc}`);
   lines.push(`  Image: ${url}`);
   if (photoLink) lines.push(`  Web: ${photoLink}`);
+  if (tags && tags.length > 0) {
+    const tagStrs = tags.map(
+      (t) => `${t.display_value ?? "?"} (ID: ${t.id ?? "?"})`,
+    );
+    lines.push(`  Tags: ${tagStrs.join(", ")}`);
+  }
   return lines.join("\n");
 }
